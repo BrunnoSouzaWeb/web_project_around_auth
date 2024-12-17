@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import logo from "../images/around.png";
 import React from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
@@ -64,14 +63,3 @@ function Header({ loggedIn, userEmail, handleLogout }) {
 }
 
 export default Header;
-=======
-import favIcon from "../images/around.png";
-
-export default function Header() {
-  return (
-    <header className="header">
-      <img src={favIcon} alt="Logo" className="header__logo" />
-    </header>
-  );
-}
->>>>>>> 8d1aa23ec35605b7baae688dd22822b06ac3e054
