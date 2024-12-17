@@ -12,6 +12,12 @@ import NewCard from "../components/NewCard.js";
 
 import CurrentUserContext from "../contexts/CurrentUserContext.js";
 
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Login from "../components/Login.js";
+import Register from "../components/Register.js";
+import ProtectedRoute from "../components/ProtectedRoute.js";
+import * as auth from "../utils/auth";
+
 function App() {
   const [isEditProfilePopupOpen, setIsEditProfilePopupOpen] = useState(false);
   const [isNewCardOpen, setIsNewCardOpen] = useState(false);
@@ -21,6 +27,13 @@ function App() {
   const [selectedCard, setSelectedCard] = useState(null);
 
   const [currentUser, setCurrentUser] = useState({});
+
+  const [loggedIn, setLoggedIn] = useState(
+    localStorage.getItem("loggedIn") ? true : false
+  );
+  const [userEmail, setUserEmail] = useState(
+    localStorage.getItem("userEmail") || ""
+  );
 
   const onEditProfileClick = () => {
     setIsEditProfilePopupOpen(true);
@@ -73,7 +86,6 @@ function App() {
     setIsNewCardOpen(false);
     setIsEditAvatarPopupOpen(false);
     setSelectedCard(null);
-    setIsNewCardOpen(false);
   };
 
   useEffect(() => {
@@ -93,6 +105,38 @@ function App() {
       .then(setCards)
       .catch((err) => console.log("Erro ao obter dados dos cartões :", err));
   }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem("jwt");
+    if (token) {
+      auth
+        .checkToken(token)
+        .then(() => {
+          setLoggedIn(true);
+          setUserEmail(localStorage.getItem("userEmail"));
+        })
+        .catch((error) => {
+          console.error("Erro ao verificar token:", error);
+          setLoggedIn(false);
+        });
+    } else {
+      setLoggedIn(false);
+    }
+  }, []);
+
+  const handleLogin = (email) => {
+    setLoggedIn(true);
+    setUserEmail(email);
+    localStorage.setItem("loggedIn", "true");
+    localStorage.setItem("userEmail", email);
+  };
+
+  const handleLogout = () => {
+    setLoggedIn(false);
+    setUserEmail("");
+    localStorage.removeItem("loggedIn");
+    localStorage.removeItem("userEmail");
+  };
 
   async function handleCardLike(card) {
     const isLiked = card.likes.some((user) => user._id === currentUser._id);
@@ -118,50 +162,71 @@ function App() {
       .deleteCard(card._id)
       .then(() => {
         setCards((state) => state.filter((c) => c._id !== card._id));
-        ///closeAllPopups(); // Fechas os popups
       })
       .catch((err) => console.error(`Erro ao eliminar o cartao: ${err}`));
   }
 
   return (
-    <CurrentUserContext.Provider value={currentUser}>
-      <div className="page">
-        <EditProfilePopup
-          isOpen={isEditProfilePopupOpen}
-          onClose={closeAllPopups}
-          onUpdateUser={handleUpdateUser}
-        />
-
-        <NewCard
-          isOpen={isNewCardOpen}
-          onClose={closeAllPopups}
-          onAddPlaceSubmit={handleAddPlaceSubmit}
-        ></NewCard>
-
-        <EditAvatarPopup
-          isOpen={isEditAvatarPopupOpen}
-          onClose={closeAllPopups}
-          onUpdateAvatar={handleUpdateAvatar}
-        />
-        <Header />
-        <Main
-          AddPlace={isNewCardOpen}
-          EditAvatar={isEditAvatarPopupOpen}
-          onEditProfileClick={onEditProfileClick}
-          onAddPlaceClick={onAddPlaceClick}
-          onEditAvatarClick={onEditAvatarClick}
-          closeAllPopups={closeAllPopups}
-          cards={cards}
-          onCardClick={handleCardClick}
-          onCardLike={handleCardLike}
-          onCardDelete={handleCardDelete}
-        />
-        {selectedCard && (
-          <ImagePopup card={selectedCard} onClose={closeAllPopups} />
-        )}
-        <Footer />
-      </div>
-    </CurrentUserContext.Provider>
+    <BrowserRouter>
+      <CurrentUserContext.Provider value={currentUser}>
+        <div className="page">
+          <Header
+            loggedIn={loggedIn}
+            userEmail={userEmail}
+            handleLogout={handleLogout}
+          />
+          <Routes>
+            <Route path="/signup" element={<Register />} />
+            <Route
+              path="/signin"
+              element={<Login handleLogin={handleLogin} />}
+            />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute loggedIn={loggedIn}>
+                  <Main
+                    AddPlace={isNewCardOpen}
+                    EditAvatar={isEditAvatarPopupOpen}
+                    onEditProfileClick={onEditProfileClick}
+                    onAddPlaceClick={onAddPlaceClick}
+                    onEditAvatarClick={onEditAvatarClick}
+                    closeAllPopups={closeAllPopups}
+                    cards={cards}
+                    onCardClick={handleCardClick}
+                    onCardLike={handleCardLike}
+                    onCardDelete={handleCardDelete}
+                  />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="*"
+              element={<Navigate to={loggedIn ? "/" : "/signin"} />}
+            />
+          </Routes>
+          <EditProfilePopup
+            isOpen={isEditProfilePopupOpen}
+            onClose={closeAllPopups}
+            onUpdateUser={handleUpdateUser}
+          />
+          <NewCard
+            isOpen={isNewCardOpen}
+            onClose={closeAllPopups}
+            onAddPlaceSubmit={handleAddPlaceSubmit}
+          />
+          <EditAvatarPopup
+            isOpen={isEditAvatarPopupOpen}
+            onClose={closeAllPopups}
+            onUpdateAvatar={handleUpdateAvatar}
+          />
+          {selectedCard && (
+            <ImagePopup card={selectedCard} onClose={closeAllPopups} />
+          )}
+          <Footer />
+        </div>
+      </CurrentUserContext.Provider>
+    </BrowserRouter>
   );
 }
 
